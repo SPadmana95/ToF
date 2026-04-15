@@ -150,7 +150,7 @@ if not exist %build_dire% md %build_dire%
 ::init and update of libaditof submodule
 echo "Cloning sub modules"
 pushd %tof_dire%
-git submodule update --init --recursive
+::git submodule update --init --recursive
 popd
 
 ::build the project with the selected options

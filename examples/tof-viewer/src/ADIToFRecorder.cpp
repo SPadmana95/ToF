@@ -287,7 +287,7 @@ void ADIToFRecorder::playbackThread() {
         dataDetails.height = m_frameDetails.height;
         m_frameDetails.dataDetails.emplace_back(dataDetails);
 
-        frame->setDetails(m_frameDetails);
+        frame->setDetails(m_frameDetails, 4, 12);  // 4 bits for confidence, 12 bits for AB
         frame->getData("metadata", &frameDataLocationHeader);
         frame->getData("depth", &frameDataLocationDEPTH);
         frame->getData("ab", &frameDataLocationAB);

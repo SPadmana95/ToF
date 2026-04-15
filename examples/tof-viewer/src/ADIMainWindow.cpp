@@ -1450,7 +1450,7 @@ void ADIMainWindow::prepareCamera(uint8_t mode) {
         if (!modified_ini_params.empty()) {
             if (use_modified_ini_params) {
                 status = getActiveCamera()->setFrameProcessParams(
-                    modified_ini_params);
+                    modified_ini_params, mode);
                 if (status != aditof::Status::OK) {
                     LOG(ERROR) << "Could not set ini params";
                 } else {
