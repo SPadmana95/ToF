@@ -198,6 +198,7 @@ add_definitions(-DRESOURCES="${RESOURCES_DIR}")
 set(WITH_NETWORK ${WITH_NETWORK} CACHE BOOL "Build network interface?" FORCE)
 set(WITH_PROTOBUF_DEPENDENCY ${WITH_PROTOBUF_DEPENDENCY} CACHE BOOL "Build with PROTOBUF dependency?" FORCE)
 set(WITH_GLOG_DEPENDENCY OFF CACHE BOOL "Build with GLOG dependency?" FORCE)
+set(WITH_SUBMODULES ${WITH_SUBMODULES} CACHE BOOL "Use submodules to build the library" FORCE)
 
 # Set platform flags for libaditof - inherit from parent
 set(NXP ${NXP} CACHE BOOL "Set to ON when building on NXP" FORCE)
@@ -207,9 +208,13 @@ set(ON_TARGET ${ON_TARGET} CACHE BOOL "Building on target" FORCE)
 # Add libaditof first (it includes its own dependencies like crc32 and json-c)
 add_subdirectory(libaditof)
 
-# Add ToF-specific dependencies that libaditof doesn't provide
-add_subdirectory(dependencies/adi/command_parser)
-add_subdirectory(dependencies/third-party/c_json)
+# Add ToF-specific dependencies only if not already provided by libaditof submodule
+if(NOT TARGET command_parser)
+    add_subdirectory(dependencies/adi/command_parser)
+endif()
+if(NOT TARGET cjson)
+    add_subdirectory(dependencies/third-party/c_json)
+endif()
 if (WITH_EXAMPLES AND NOT NXP)
         add_subdirectory(dependencies/third-party/imgui)
 endif()
