@@ -25,14 +25,21 @@ option(WITH_OFFLINE "Build offline interface?" OFF)
 option(WITH_GLOG_DEPENDENCY "Build with GLOG dependency to be used for logging?" ON)
 option(WITH_COMMAND_LINE_TOOLS "Build with command line tools?" ON)
 option(CI_BUILD "Build for CI" OFF)
-option(WITH_SUBMODULES "Use submodules to build the library" ON)
 set(SOM_TYPE "Single" CACHE STRING "Which SoM SDK is building for?")
 
 ######################### Target based Options ################################
 option(NXP "Set to ON when building on NXP" OFF)
 option(NVIDIA "Set to ON when building on NVIDIA" OFF)
-option(WITH_PROTOBUF_DEPENDENCY "Build with PROTOBUF dependency?" ON)
 option(USE_DEPTH_COMPUTE_OPENSOURCE "Use an open source implementation?" OFF)
+
+# Set protobuf and submodules based on network requirement (like ADCAM does)
+if (WITH_NETWORK)
+    option(WITH_SUBMODULES "Use submodules to build the library" ON)
+    option(WITH_PROTOBUF_DEPENDENCY "Build with PROTOBUF dependency?" ON)
+else()
+    option(WITH_SUBMODULES "Use submodules to build the library" OFF)
+    option(WITH_PROTOBUF_DEPENDENCY "Build with PROTOBUF dependency?" OFF)
+endif()
 
 ################################## Git ########################################
 include(FindGit OPTIONAL)
@@ -167,8 +174,8 @@ if(WITH_GLOG_DEPENDENCY)
 endif()
 
 if(NOT WITH_PROTOBUF_DEPENDENCY)
-        if(NOT ON_TARGET)
-                message(FATAL_ERROR "SDK can be built without protobuf only on target builds!")
+        if(NOT ON_TARGET AND WITH_NETWORK)
+                message(FATAL_ERROR "SDK can be built without protobuf only on target builds or when WITH_NETWORK=OFF!")
         endif()
 else()
         add_definitions(-DUSE_PROTOBUF)
@@ -187,7 +194,26 @@ set(CONFIG_DIR_NAME "config")
 add_definitions(-DCONFIG_DIR_NAME="${CONFIG_DIR_NAME}")
 add_definitions(-DRESOURCES="${RESOURCES_DIR}")
 
+# Force network and protobuf settings for libaditof submodule to match parent
+set(WITH_NETWORK ${WITH_NETWORK} CACHE BOOL "Build network interface?" FORCE)
+set(WITH_PROTOBUF_DEPENDENCY ${WITH_PROTOBUF_DEPENDENCY} CACHE BOOL "Build with PROTOBUF dependency?" FORCE)
+set(WITH_GLOG_DEPENDENCY OFF CACHE BOOL "Build with GLOG dependency?" FORCE)
+
+# Set platform flags for libaditof - inherit from parent
+set(NXP ${NXP} CACHE BOOL "Set to ON when building on NXP" FORCE)
+set(NVIDIA ${NVIDIA} CACHE BOOL "Set to ON when building on NVIDIA" FORCE)
+set(ON_TARGET ${ON_TARGET} CACHE BOOL "Building on target" FORCE)
+
+# Add libaditof first (it includes its own dependencies like crc32 and json-c)
 add_subdirectory(libaditof)
+
+# Add ToF-specific dependencies that libaditof doesn't provide
+add_subdirectory(dependencies/adi/command_parser)
+add_subdirectory(dependencies/third-party/c_json)
+if (WITH_EXAMPLES AND NOT NXP)
+        add_subdirectory(dependencies/third-party/imgui)
+endif()
+
 add_subdirectory(apps)
 add_subdirectory(tests)
 
@@ -198,9 +224,8 @@ endif()
 if (WITH_DOC)
         add_subdirectory(doc)
 endif()
-if (WITH_PYTHON)
-        add_subdirectory(bindings/python)
-endif()
+# Python bindings are provided by libaditof subdirectory
+# Don't add bindings/python here to avoid duplicate target conflicts
 if (WITH_COMMAND_LINE_TOOLS)
         add_subdirectory(tools)
 endif()
