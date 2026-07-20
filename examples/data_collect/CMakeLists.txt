@@ -29,3 +29,6 @@ if ( WIN32 )
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE aditof command_parser)
+if(WITH_GLOG_DEPENDENCY)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glog)
+endif()

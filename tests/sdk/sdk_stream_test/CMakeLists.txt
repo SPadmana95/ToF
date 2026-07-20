@@ -4,6 +4,9 @@ project(sdk_stream_test)
 add_executable(${PROJECT_NAME} main.cpp)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE aditof command_parser)
+if(WITH_GLOG_DEPENDENCY)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glog)
+endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 
 if( WIN32 )

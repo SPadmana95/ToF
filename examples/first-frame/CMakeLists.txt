@@ -6,6 +6,9 @@ add_executable(${PROJECT_NAME} main.cpp)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 14)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE aditof command_parser)
+if(WITH_GLOG_DEPENDENCY)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glog)
+endif()
 
 if( WIN32 )
     add_custom_command( TARGET ${PROJECT_NAME} POST_BUILD

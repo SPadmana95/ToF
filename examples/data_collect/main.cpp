@@ -329,12 +329,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    status = camera->setSensorConfiguration(configuration);
-    if (status != Status::OK) {
-        LOG(INFO) << "Could not configure camera with " << configuration;
-    } else {
-        LOG(INFO) << "Configure camera with " << configuration;
-    }
+    // Note: setSensorConfiguration removed in libaditof rel-7.1.0
 
     if (saveconfigurationFile) {
         status = camera->saveDepthParamsToJsonFile(saveconfigurationFileValue);
@@ -477,9 +472,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (!samethread) {
-            frameSaver.saveFrameToFileMultithread(frame);
+            frameSaver.SnapShotFrames(folder_path, &frame, nullptr, nullptr);
         } else {
-            frameSaver.saveFrameToFile(frame);
+            frameSaver.SnapShotFrames(folder_path, &frame, nullptr, nullptr);
         }
     } // End of for Loop
 

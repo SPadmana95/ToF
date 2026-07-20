@@ -35,7 +35,7 @@
 #include "aditof/sensor_enumerator_interface.h"
 #include "buffer.pb.h"
 
-#include "../../sdk/src/connections/target/v4l_buffer_access_interface.h"
+#include "../../sdk/src/connections/target/v4l2/v4l_buffer_access_interface.h"
 
 #ifdef USE_GLOG
 #include <glog/logging.h>
@@ -70,6 +70,7 @@ std::unique_ptr<aditof::SensorEnumeratorInterface> sensorsEnumerator;
 
 /* Server only works with one depth sensor */
 std::shared_ptr<aditof::DepthSensorInterface> camDepthSensor;
+std::shared_ptr<aditof::Adsd3500HardwareInterface> camAdsd3500Hw;
 std::shared_ptr<aditof::V4lBufferAccessInterface> sensorV4lBufAccess;
 int processedFrameSize;
 
@@ -336,8 +337,10 @@ static void cleanup_sensors() {
         frameCaptureThread.join();
     }
 
-    camDepthSensor->adsd3500_unregister_interrupt_callback(callback);
+    if (camAdsd3500Hw)
+        camAdsd3500Hw->adsd3500_unregister_interrupt_callback(callback);
     sensorV4lBufAccess.reset();
+    camAdsd3500Hw.reset();
     camDepthSensor.reset();
 
     {
@@ -613,6 +616,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
             }
 
             camDepthSensor = depthSensors.front();
+            camAdsd3500Hw = std::dynamic_pointer_cast<aditof::Adsd3500HardwareInterface>(camDepthSensor);
             auto pbSensorsInfo = buff_send.mutable_sensors_info();
             sensorV4lBufAccess =
                 std::dynamic_pointer_cast<aditof::V4lBufferAccessInterface>(
@@ -636,8 +640,9 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
             cardVersion->set_sdversion(sdversion);
 
             // This server is now subscribing for interrupts of ADSD3500
-            aditof::Status registerCbStatus =
-                camDepthSensor->adsd3500_register_interrupt_callback(callback);
+            aditof::Status registerCbStatus = camAdsd3500Hw
+                ? camAdsd3500Hw->adsd3500_register_interrupt_callback(callback)
+                : aditof::Status::UNAVAILABLE;
             if (registerCbStatus != aditof::Status::OK) {
                 LOG(WARNING) << "Could not register callback";
                 // TBD: not sure whether to send this error to client or not
@@ -953,10 +958,8 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
         }
 
         case SET_SENSOR_CONFIGURATION: {
-            std::string sensorConf = buff_recv.func_strings_param(0);
-            aditof::Status status =
-                camDepthSensor->setSensorConfiguration(sensorConf);
-            buff_send.set_status(static_cast<::payload::Status>(status));
+            // setSensorConfiguration was removed in libaditof rel-7.1.0
+            buff_send.set_status(static_cast<::payload::Status>(aditof::Status::UNAVAILABLE));
             break;
         }
 
@@ -978,7 +981,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
                 static_cast<unsigned int>(buff_recv.func_int32_param(1));
 
             aditof::Status status =
-                camDepthSensor->adsd3500_read_cmd(cmd, &data, usDelay);
+                camAdsd3500Hw->adsd3500_read_cmd(cmd, &data, usDelay);
             if (status == aditof::Status::OK) {
                 buff_send.add_int32_payload(static_cast<::google::int32>(data));
             }
@@ -995,7 +998,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
                 static_cast<uint32_t>(buff_recv.func_int32_param(2));
 
             aditof::Status status =
-                camDepthSensor->adsd3500_write_cmd(cmd, data, usDelay);
+                camAdsd3500Hw->adsd3500_write_cmd(cmd, data, usDelay);
             buff_send.set_status(static_cast<::payload::Status>(status));
             break;
         }
@@ -1008,7 +1011,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
 
             memcpy(data, buff_recv.func_bytes_param(0).c_str(),
                    4 * sizeof(uint8_t));
-            aditof::Status status = camDepthSensor->adsd3500_read_payload_cmd(
+            aditof::Status status = camAdsd3500Hw->adsd3500_read_payload_cmd(
                 cmd, data, payload_len);
             if (status == aditof::Status::OK) {
                 buff_send.add_bytes_payload(data, payload_len);
@@ -1025,7 +1028,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
             uint8_t *data = new uint8_t[payload_len];
 
             aditof::Status status =
-                camDepthSensor->adsd3500_read_payload(data, payload_len);
+                camAdsd3500Hw->adsd3500_read_payload(data, payload_len);
             if (status == aditof::Status::OK) {
                 buff_send.add_bytes_payload(data, payload_len);
             }
@@ -1042,7 +1045,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
             uint8_t *data = new uint8_t[payload_len];
 
             memcpy(data, buff_recv.func_bytes_param(0).c_str(), payload_len);
-            aditof::Status status = camDepthSensor->adsd3500_write_payload_cmd(
+            aditof::Status status = camAdsd3500Hw->adsd3500_write_payload_cmd(
                 cmd, data, payload_len);
 
             delete[] data;
@@ -1057,7 +1060,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
 
             memcpy(data, buff_recv.func_bytes_param(0).c_str(), payload_len);
             aditof::Status status =
-                camDepthSensor->adsd3500_write_payload(data, payload_len);
+                camAdsd3500Hw->adsd3500_write_payload(data, payload_len);
 
             delete[] data;
             buff_send.set_status(static_cast<::payload::Status>(status));
@@ -1069,7 +1072,7 @@ void invoke_sdk_api(payload::ClientRequest buff_recv) {
             int imagerStatus;
 
             aditof::Status status =
-                camDepthSensor->adsd3500_get_status(chipStatus, imagerStatus);
+                camAdsd3500Hw->adsd3500_get_status(chipStatus, imagerStatus);
             if (status == aditof::Status::OK) {
                 buff_send.add_int32_payload(chipStatus);
                 buff_send.add_int32_payload(imagerStatus);

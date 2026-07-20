@@ -185,14 +185,16 @@ int main(int argc, char *argv[]) {
 
     // Registering a callback to be executed when ADSD3500 issues an interrupt
     std::shared_ptr<DepthSensorInterface> sensor = camera->getSensor();
+    auto adsd3500Hw = std::dynamic_pointer_cast<aditof::Adsd3500HardwareInterface>(sensor);
     aditof::SensorInterruptCallback callback = [](Adsd3500Status status) {
         LOG(INFO) << "Running the callback for which the status of ADSD3500 "
                      "has been "
                      "forwarded. ADSD3500 status = "
                   << status;
     };
-    Status registerCbStatus =
-        sensor->adsd3500_register_interrupt_callback(callback);
+    Status registerCbStatus = adsd3500Hw
+        ? adsd3500Hw->adsd3500_register_interrupt_callback(callback)
+        : aditof::Status::UNAVAILABLE;
     if (status != Status::OK) {
         LOG(WARNING) << "Could not register callback";
     }
@@ -278,8 +280,8 @@ int main(int argc, char *argv[]) {
     LOG(INFO) << "Mode: " << static_cast<unsigned int>(metadata.imagerMode);
 
     // Example on how to unregister a callback from ADSD3500 interupts
-    if (registerCbStatus == Status::OK) {
-        sensor->adsd3500_unregister_interrupt_callback(callback);
+    if (registerCbStatus == Status::OK && adsd3500Hw) {
+        adsd3500Hw->adsd3500_unregister_interrupt_callback(callback);
     }
 
     return 0;

@@ -187,6 +187,14 @@ set(CONFIG_DIR_NAME "config")
 add_definitions(-DCONFIG_DIR_NAME="${CONFIG_DIR_NAME}")
 add_definitions(-DRESOURCES="${RESOURCES_DIR}")
 
+if (WITH_GLOG_DEPENDENCY)
+        set(WITH_GFLAGS OFF CACHE BOOL "Disable gflags for glog")
+        set(BUILD_TESTING OFF CACHE BOOL "Disable glog tests")
+        add_subdirectory(libaditof/glog)
+endif()
+
+add_subdirectory(dependencies/adi/command_parser)
+
 add_subdirectory(libaditof)
 add_subdirectory(apps)
 add_subdirectory(tests)

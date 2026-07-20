@@ -293,14 +293,8 @@ int main(int argc, char *argv[]) {
             return -2;
         }
 
-        status = camera->setSensorConfiguration(configuration);
-        if (status != Status::OK) {
-            LOG(ERROR) << "@@," << argv[0] << ",FAIL"
-                       << ",LN" << __LINE__
-                       << ",DN:Could not configure camera with "
-                       << configuration << ":TST:" << summary;
-            return -2;
-        }
+        // Note: setSensorConfiguration removed in libaditof rel-7.1.0
+        status = aditof::Status::OK;
 
         aditof::CameraDetails cameraDetails;
         camera->getDetails(cameraDetails);
@@ -490,7 +484,7 @@ int main(int argc, char *argv[]) {
 
                 if (divisor > 0) {
                     if (saveOutput && (frame_count % divisor) == 0) {
-                        frameSaver.saveFrameToFile(frame);
+                        frameSaver.SnapShotFrames(folder_path, &frame, nullptr, nullptr);
                     }
                 }
 
